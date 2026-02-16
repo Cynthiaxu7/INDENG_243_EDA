@@ -1,0 +1,11 @@
+{
+  "dataset": "Rameen_Chewing_Video_Files",
+  "csv_files": [
+    "chewing_analysis.csv",
+    "face_landmarks.csv",
+    "lip_landmarks.csv",
+    "mouth_metrics.csv",
+    "mouth_timeseries.csv"
+  ],
+  "file_count": 5
+}

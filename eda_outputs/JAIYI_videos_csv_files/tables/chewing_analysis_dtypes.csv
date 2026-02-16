@@ -1,0 +1,12 @@
+,dtype
+bite_id,int64
+start_frame,int64
+end_frame,int64
+start_time_sec,float64
+end_time_sec,float64
+duration_sec,float64
+n_chews,int64
+chewing_frequency_per_sec,float64
+avg_chew_time_sec,float64
+chew_side,str
+mouth_open_frames,int64

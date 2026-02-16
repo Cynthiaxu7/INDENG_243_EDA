@@ -1,0 +1,11 @@
+{
+  "dataset": "JAIYI_videos_csv_files",
+  "csv_files": [
+    "chewing_analysis.csv",
+    "face_landmarks.csv",
+    "lip_landmarks.csv",
+    "mouth_metrics.csv",
+    "mouth_timeseries.csv"
+  ],
+  "file_count": 5
+}

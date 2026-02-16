@@ -1,0 +1,12 @@
+,dtype
+frame,int64
+time_sec,float64
+has_face,int64
+mouth_open_px,float64
+mouth_width_px,float64
+jaw_left_y_px,float64
+jaw_right_y_px,float64
+mouth_open_smooth,float64
+mouth_is_open,int64
+phase_open,float64
+bite_id,int64
