@@ -1,0 +1,123 @@
+{
+  "datasets": {
+    "dessert": {
+      "tables": [
+        "chewing_analysis",
+        "lip_landmarks",
+        "mouth_metrics",
+        "mouth_timeseries"
+      ],
+      "outputs": [
+        "chewing_analysis",
+        "lip_landmarks",
+        "mouth_metrics",
+        "mouth_timeseries"
+      ]
+    },
+    "jiaqi": {
+      "tables": [
+        "chewing_analysis",
+        "lip_landmarks",
+        "mouth_metrics",
+        "mouth_timeseries"
+      ],
+      "outputs": [
+        "chewing_analysis",
+        "lip_landmarks",
+        "mouth_metrics",
+        "mouth_timeseries"
+      ]
+    },
+    "jiayi": {
+      "tables": [
+        "chewing_analysis",
+        "face_landmarks",
+        "lip_landmarks",
+        "mouth_metrics",
+        "mouth_timeseries"
+      ],
+      "outputs": [
+        "chewing_analysis",
+        "face_landmarks",
+        "lip_landmarks",
+        "mouth_metrics",
+        "mouth_timeseries"
+      ]
+    },
+    "rameen": {
+      "tables": [
+        "chewing_analysis",
+        "face_landmarks",
+        "lip_landmarks",
+        "mouth_metrics",
+        "mouth_timeseries"
+      ],
+      "outputs": [
+        "chewing_analysis",
+        "face_landmarks",
+        "lip_landmarks",
+        "mouth_metrics",
+        "mouth_timeseries"
+      ]
+    },
+    "richie": {
+      "tables": [
+        "chewing_analysis",
+        "lip_landmarks",
+        "mouth_metrics",
+        "mouth_timeseries"
+      ],
+      "outputs": [
+        "chewing_analysis",
+        "lip_landmarks",
+        "mouth_metrics",
+        "mouth_timeseries"
+      ]
+    },
+    "steak": {
+      "tables": [
+        "chewing_analysis",
+        "face_landmarks",
+        "lip_landmarks",
+        "mouth_metrics",
+        "mouth_timeseries"
+      ],
+      "outputs": [
+        "chewing_analysis",
+        "face_landmarks",
+        "lip_landmarks",
+        "mouth_metrics",
+        "mouth_timeseries"
+      ]
+    },
+    "zoe": {
+      "tables": [
+        "chewing_analysis",
+        "lip_landmarks",
+        "mouth_metrics",
+        "mouth_timeseries"
+      ],
+      "outputs": [
+        "chewing_analysis",
+        "lip_landmarks",
+        "mouth_metrics",
+        "mouth_timeseries"
+      ]
+    },
+    "_ALL": {
+      "tables": [
+        "chewing_analysis",
+        "lip_landmarks",
+        "mouth_metrics",
+        "mouth_timeseries"
+      ],
+      "outputs": [
+        "chewing_analysis",
+        "lip_landmarks",
+        "mouth_metrics",
+        "mouth_timeseries"
+      ]
+    }
+  },
+  "project_root": "/Users/prophecia/Desktop/INDENG 243"
+}

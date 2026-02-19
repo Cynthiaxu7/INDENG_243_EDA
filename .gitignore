@@ -1,0 +1,22 @@
+.DS_Store
+
+# Python virtual environments
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Raw videos
+*.mov
+*.MOV
+
+# Dataset directories/files
+data/
+
+# Archives and packaged artifacts
+*.zip
+
+# Local generated artifacts
+outputs/

@@ -1,371 +1,350 @@
 from __future__ import annotations
 
 import json
+import math
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, Iterable, List, Tuple
 
-import matplotlib.pyplot as plt
-import numpy as np
+import matplotlib
 import pandas as pd
+import seaborn as sns
 
-try:
-    import seaborn as sns
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
-    HAS_SEABORN = True
-except Exception:
-    HAS_SEABORN = False
-
-
-BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "data"
-OUT_DIR = BASE_DIR / "eda_outputs"
-
-plt.rcParams["figure.dpi"] = 130
-plt.rcParams["savefig.bbox"] = "tight"
-if HAS_SEABORN:
-    sns.set_theme(style="whitegrid")
+sns.set_theme(style="whitegrid")
+plt.rcParams["figure.dpi"] = 140
 
 
-def safe_savefig(path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(path)
+@dataclass(frozen=True)
+class DatasetBundle:
+    name: str
+    csv_files: Dict[str, Path]
+
+
+def ensure_dirs(base_dir: Path) -> Tuple[Path, Path]:
+    fig_dir = base_dir / "figures"
+    tab_dir = base_dir / "tables"
+    fig_dir.mkdir(parents=True, exist_ok=True)
+    tab_dir.mkdir(parents=True, exist_ok=True)
+    return fig_dir, tab_dir
+
+
+def clean_output_dir(base_dir: Path) -> None:
+    if not base_dir.exists():
+        return
+    for child in base_dir.rglob("*"):
+        if child.is_file():
+            child.unlink()
+
+
+def safe_read_csv(path: Path) -> pd.DataFrame:
+    return pd.read_csv(path, low_memory=False)
+
+
+def write_core_tables(df: pd.DataFrame, stem: str, tables_dir: Path) -> None:
+    shape = {"rows": int(df.shape[0]), "columns": int(df.shape[1])}
+    (tables_dir / f"{stem}_shape.json").write_text(json.dumps(shape, indent=2), encoding="utf-8")
+
+    dtypes = (
+        pd.DataFrame({"column": df.columns, "dtype": [str(t) for t in df.dtypes]})
+        .sort_values("column")
+        .reset_index(drop=True)
+    )
+    dtypes.to_csv(tables_dir / f"{stem}_dtypes.csv", index=False)
+
+    missing = (
+        pd.DataFrame(
+            {
+                "column": df.columns,
+                "missing_count": df.isna().sum().values,
+                "missing_pct": (100.0 * df.isna().mean().values).round(4),
+            }
+        )
+        .sort_values(["missing_count", "column"], ascending=[False, True])
+        .reset_index(drop=True)
+    )
+    missing.to_csv(tables_dir / f"{stem}_missingness.csv", index=False)
+
+    try:
+        df.describe(include="all").transpose().to_csv(tables_dir / f"{stem}_describe_all.csv")
+    except Exception:
+        pass
+
+    numeric = df.select_dtypes(include="number")
+    if not numeric.empty:
+        numeric.describe().transpose().to_csv(tables_dir / f"{stem}_describe_numeric.csv")
+
+
+def save_missingness_plot(df: pd.DataFrame, title: str, out_path: Path) -> None:
+    missing_pct = 100.0 * df.isna().mean().sort_values(ascending=False)
+    plt.figure(figsize=(max(8, min(16, 0.45 * len(missing_pct))), 4.8))
+    ax = sns.barplot(x=missing_pct.index, y=missing_pct.values, color="#4C78A8")
+    ax.set_title(title)
+    ax.set_ylabel("Missing (%)")
+    ax.set_xlabel("Column")
+    ax.tick_params(axis="x", rotation=60)
+    plt.tight_layout()
+    plt.savefig(out_path)
     plt.close()
 
 
-def get_dataset_dirs() -> List[Path]:
-    if not DATA_DIR.exists():
-        return []
-    return sorted([p for p in DATA_DIR.iterdir() if p.is_dir()])
-
-
-def write_basic_tables(df: pd.DataFrame, out_tables: Path, stem: str) -> None:
-    out_tables.mkdir(parents=True, exist_ok=True)
-    df.dtypes.astype(str).rename("dtype").to_csv(out_tables / f"{stem}_dtypes.csv")
-
-    missing = df.isna().sum().rename("missing_count").to_frame()
-    missing["missing_pct"] = (missing["missing_count"] / max(len(df), 1)) * 100
-    missing.sort_values("missing_pct", ascending=False).to_csv(
-        out_tables / f"{stem}_missingness.csv"
-    )
-
-    with open(out_tables / f"{stem}_shape.json", "w", encoding="utf-8") as f:
-        json.dump({"rows": int(df.shape[0]), "columns": int(df.shape[1])}, f, indent=2)
-
-    desc = df.describe(include="all").transpose()
-    desc.to_csv(out_tables / f"{stem}_describe_all.csv")
-
-    numeric = df.select_dtypes(include=[np.number])
-    if not numeric.empty:
-        numeric.describe(percentiles=[0.01, 0.05, 0.5, 0.95, 0.99]).transpose().to_csv(
-            out_tables / f"{stem}_describe_numeric.csv"
-        )
-
-
-def plot_missingness(df: pd.DataFrame, out_figs: Path, stem: str) -> None:
-    missing_pct = (df.isna().mean() * 100).sort_values(ascending=False)
-    top = missing_pct.head(30)
-    plt.figure(figsize=(10, 4))
-    top.plot(kind="bar", color="#5A7D9A")
-    plt.title(f"{stem}: Missingness (%) - Top 30 Columns")
-    plt.ylabel("Percent missing")
-    plt.xlabel("Column")
-    plt.xticks(rotation=70, ha="right")
-    safe_savefig(out_figs / f"{stem}_missingness_bar.png")
-
-
-def plot_numeric_histograms(df: pd.DataFrame, out_figs: Path, stem: str) -> None:
-    num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    if not num_cols:
+def save_numeric_histograms(df: pd.DataFrame, title: str, out_path: Path) -> None:
+    numeric_cols = list(df.select_dtypes(include="number").columns)
+    if not numeric_cols:
         return
-    max_cols = min(len(num_cols), 12)
-    cols = num_cols[:max_cols]
-    n_cols = 3
-    n_rows = int(np.ceil(max_cols / n_cols))
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(14, 4 * n_rows))
-    axes = np.array(axes).reshape(-1)
-    for i, col in enumerate(cols):
-        ax = axes[i]
-        series = df[col].dropna()
-        ax.hist(series, bins=40, color="#6AA56A", alpha=0.9)
-        ax.set_title(col)
-    for j in range(i + 1, len(axes)):
+    max_cols = min(len(numeric_cols), 24)
+    numeric_cols = numeric_cols[:max_cols]
+
+    n_cols = 4
+    n_rows = math.ceil(len(numeric_cols) / n_cols)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(4.0 * n_cols, 3.0 * n_rows))
+    axes = axes.flatten()
+
+    for idx, col in enumerate(numeric_cols):
+        ax = axes[idx]
+        s = df[col].dropna()
+        if s.empty:
+            ax.text(0.5, 0.5, "No data", ha="center", va="center")
+        else:
+            ax.hist(s, bins=35, color="#59A14F", alpha=0.85)
+        ax.set_title(col, fontsize=9)
+
+    for j in range(len(numeric_cols), len(axes)):
         axes[j].axis("off")
-    fig.suptitle(f"{stem}: Numeric Distributions (first {max_cols} columns)", y=1.02)
-    safe_savefig(out_figs / f"{stem}_numeric_histograms.png")
+
+    fig.suptitle(title, y=1.02)
+    plt.tight_layout()
+    plt.savefig(out_path)
+    plt.close(fig)
 
 
-def plot_correlation_heatmap(df: pd.DataFrame, out_figs: Path, stem: str) -> None:
-    numeric = df.select_dtypes(include=[np.number])
+def save_correlation_heatmap(df: pd.DataFrame, title: str, out_path: Path) -> None:
+    numeric = df.select_dtypes(include="number")
     if numeric.shape[1] < 2:
         return
     corr = numeric.corr(numeric_only=True)
-    plt.figure(figsize=(10, 8))
-    if HAS_SEABORN:
-        sns.heatmap(corr, cmap="coolwarm", center=0, square=False, cbar=True)
-    else:
-        plt.imshow(corr.values, cmap="coolwarm", aspect="auto")
-        plt.colorbar()
-        plt.xticks(range(len(corr.columns)), corr.columns, rotation=90)
-        plt.yticks(range(len(corr.index)), corr.index)
-    plt.title(f"{stem}: Correlation Heatmap (numeric)")
-    safe_savefig(out_figs / f"{stem}_correlation_heatmap.png")
+    plt.figure(figsize=(max(6, 0.7 * corr.shape[1]), max(5, 0.6 * corr.shape[1])))
+    sns.heatmap(corr, cmap="coolwarm", center=0, square=True, linewidths=0.4)
+    plt.title(title)
+    plt.tight_layout()
+    plt.savefig(out_path)
+    plt.close()
 
 
-def plot_mouth_timeseries(df: pd.DataFrame, out_figs: Path) -> None:
-    needed = {"time_sec", "mouth_open_px", "mouth_width_px"}
-    if not needed.issubset(df.columns):
+def save_mouth_timeseries_plots(df: pd.DataFrame, figures_dir: Path, stem: str) -> None:
+    if "time_sec" in df.columns and "mouth_open_px" in df.columns:
+        plot_df = df[["time_sec", "mouth_open_px"]].dropna().sort_values("time_sec")
+        if not plot_df.empty:
+            plt.figure(figsize=(10, 4.8))
+            sns.lineplot(data=plot_df, x="time_sec", y="mouth_open_px", color="#E15759", linewidth=1)
+            plt.title("Mouth Opening Over Time")
+            plt.xlabel("Time (sec)")
+            plt.ylabel("Mouth Open (px)")
+            plt.tight_layout()
+            plt.savefig(figures_dir / f"{stem}_open_over_time.png")
+            plt.close()
+
+    if {"mouth_width_px", "mouth_open_px"}.issubset(df.columns):
+        plot_df = df[["mouth_width_px", "mouth_open_px"]].dropna()
+        if not plot_df.empty:
+            if len(plot_df) > 50000:
+                plot_df = plot_df.sample(50000, random_state=42)
+            plt.figure(figsize=(7, 5))
+            sns.scatterplot(data=plot_df, x="mouth_width_px", y="mouth_open_px", s=10, alpha=0.25)
+            plt.title("Mouth Width vs Mouth Open")
+            plt.xlabel("Mouth Width (px)")
+            plt.ylabel("Mouth Open (px)")
+            plt.tight_layout()
+            plt.savefig(figures_dir / f"{stem}_width_vs_open.png")
+            plt.close()
+
+
+def save_landmark_y_plot(df: pd.DataFrame, figures_dir: Path, stem: str) -> None:
+    if not {"time_sec", "y_px", "landmark_name"}.issubset(df.columns):
         return
-    tmp = df.sort_values("time_sec").copy()
-    tmp["mouth_open_roll"] = tmp["mouth_open_px"].rolling(window=45, min_periods=1).mean()
-
-    plt.figure(figsize=(12, 4))
-    plt.plot(tmp["time_sec"], tmp["mouth_open_px"], alpha=0.35, label="mouth_open_px")
-    plt.plot(tmp["time_sec"], tmp["mouth_open_roll"], linewidth=2, label="rolling mean (45)")
-    plt.xlabel("Time (sec)")
-    plt.ylabel("Mouth open (px)")
-    plt.title("Mouth Opening Over Time")
-    plt.legend()
-    safe_savefig(out_figs / "mouth_timeseries_open_over_time.png")
-
-    plt.figure(figsize=(7, 5))
-    plt.scatter(
-        tmp["mouth_width_px"],
-        tmp["mouth_open_px"],
-        s=8,
-        alpha=0.25,
-        c=tmp["time_sec"],
-        cmap="viridis",
-    )
-    plt.xlabel("Mouth width (px)")
-    plt.ylabel("Mouth open (px)")
-    plt.title("Mouth Width vs Opening")
-    plt.colorbar(label="Time (sec)")
-    safe_savefig(out_figs / "mouth_timeseries_width_vs_open.png")
-
-
-def plot_mouth_metrics(df: pd.DataFrame, out_figs: Path) -> None:
-    needed = {"time_sec", "mouth_open_smooth", "mouth_is_open"}
-    if not needed.issubset(df.columns):
+    top_landmarks = df["landmark_name"].value_counts().head(8).index.tolist()
+    plot_df = df[df["landmark_name"].isin(top_landmarks)][["time_sec", "y_px", "landmark_name"]].dropna()
+    if plot_df.empty:
         return
-    tmp = df.sort_values("time_sec")
-
-    plt.figure(figsize=(12, 4))
-    plt.plot(tmp["time_sec"], tmp["mouth_open_smooth"], label="mouth_open_smooth", linewidth=1.8)
-    open_mask = tmp["mouth_is_open"] == 1
-    plt.scatter(
-        tmp.loc[open_mask, "time_sec"],
-        tmp.loc[open_mask, "mouth_open_smooth"],
-        s=8,
-        alpha=0.5,
-        label="mouth_is_open=1",
-    )
+    if len(plot_df) > 80000:
+        plot_df = plot_df.sample(80000, random_state=42)
+    plt.figure(figsize=(10, 5))
+    sns.lineplot(data=plot_df, x="time_sec", y="y_px", hue="landmark_name", estimator=None, linewidth=0.9)
+    plt.title(f"{stem} Y Position Over Time")
     plt.xlabel("Time (sec)")
-    plt.ylabel("Smoothed mouth opening")
-    plt.title("Smoothed Mouth Opening and Open-State Events")
-    plt.legend()
-    safe_savefig(out_figs / "mouth_metrics_smooth_and_open_events.png")
-
-    if "bite_id" in tmp.columns:
-        bite_len = tmp.groupby("bite_id").size()
-        plt.figure(figsize=(9, 4))
-        bite_len.plot(kind="hist", bins=40, color="#B57FC8")
-        plt.title("Distribution of Frames per Bite")
-        plt.xlabel("Frames per bite_id")
-        safe_savefig(out_figs / "mouth_metrics_bite_frame_count_distribution.png")
+    plt.ylabel("Y (px)")
+    plt.tight_layout()
+    plt.savefig(figures_dir / f"{stem}_y_over_time.png")
+    plt.close()
 
 
-def plot_chewing_analysis(df: pd.DataFrame, out_figs: Path) -> None:
+def save_chewing_plots(df: pd.DataFrame, figures_dir: Path) -> None:
     if "duration_sec" in df.columns:
-        plt.figure(figsize=(8, 4))
-        plt.hist(df["duration_sec"].dropna(), bins=30, color="#D28445")
-        plt.title("Chewing Segment Duration Distribution")
-        plt.xlabel("Duration (sec)")
-        safe_savefig(out_figs / "chewing_duration_distribution.png")
+        s = df["duration_sec"].dropna()
+        if not s.empty:
+            plt.figure(figsize=(7, 4.8))
+            sns.histplot(s, bins=30, kde=True, color="#F28E2B")
+            plt.title("Chewing Duration Distribution")
+            plt.xlabel("Duration (sec)")
+            plt.tight_layout()
+            plt.savefig(figures_dir / "chewing_duration_distribution.png")
+            plt.close()
 
-    needed = {"duration_sec", "chewing_frequency_per_sec"}
-    if needed.issubset(df.columns):
-        plt.figure(figsize=(7, 5))
-        if HAS_SEABORN and "chew_side" in df.columns:
+    if {"duration_sec", "chew_side"}.issubset(df.columns):
+        plot_df = df[["duration_sec", "chew_side"]].dropna()
+        if not plot_df.empty:
+            plt.figure(figsize=(7, 4.8))
+            sns.boxplot(data=plot_df, x="chew_side", y="duration_sec", hue=None)
+            plt.title("Chewing Duration by Side")
+            plt.xlabel("Chew Side")
+            plt.ylabel("Duration (sec)")
+            plt.tight_layout()
+            plt.savefig(figures_dir / "chewing_duration_by_side_boxplot.png")
+            plt.close()
+
+    if {"duration_sec", "chewing_frequency_per_sec"}.issubset(df.columns):
+        plot_df = df[["duration_sec", "chewing_frequency_per_sec"]].dropna()
+        if not plot_df.empty:
+            plt.figure(figsize=(7, 4.8))
             sns.scatterplot(
-                data=df,
+                data=plot_df,
                 x="duration_sec",
                 y="chewing_frequency_per_sec",
-                hue="chew_side",
-                s=45,
+                s=30,
+                alpha=0.75,
+                color="#4E79A7",
             )
-        else:
-            plt.scatter(df["duration_sec"], df["chewing_frequency_per_sec"], alpha=0.75)
-        plt.title("Duration vs Chewing Frequency")
-        plt.xlabel("Duration (sec)")
-        plt.ylabel("Chewing frequency (/sec)")
-        safe_savefig(out_figs / "chewing_duration_vs_frequency.png")
-
-    if {"chew_side", "duration_sec"}.issubset(df.columns):
-        plt.figure(figsize=(7, 4))
-        if HAS_SEABORN:
-            sns.boxplot(data=df, x="chew_side", y="duration_sec")
-        else:
-            groups = [g["duration_sec"].dropna() for _, g in df.groupby("chew_side")]
-            labels = list(df["chew_side"].dropna().unique())
-            plt.boxplot(groups, labels=labels)
-        plt.title("Duration by Chew Side")
-        safe_savefig(out_figs / "chewing_duration_by_side_boxplot.png")
+            plt.title("Chewing Duration vs Frequency")
+            plt.xlabel("Duration (sec)")
+            plt.ylabel("Frequency (per sec)")
+            plt.tight_layout()
+            plt.savefig(figures_dir / "chewing_duration_vs_frequency.png")
+            plt.close()
 
 
-def plot_lip_landmarks(df: pd.DataFrame, out_figs: Path) -> None:
-    needed = {"time_sec", "landmark_name", "y_px"}
-    if not needed.issubset(df.columns):
-        return
-    targets = {"upper_lip", "lower_lip", "mouth_left", "mouth_right", "chin"}
-    tmp = df[df["landmark_name"].isin(targets)].copy()
-    if tmp.empty:
-        return
-    plt.figure(figsize=(12, 5))
-    if HAS_SEABORN:
-        sns.lineplot(data=tmp, x="time_sec", y="y_px", hue="landmark_name", linewidth=1.2)
-    else:
-        for name, g in tmp.groupby("landmark_name"):
-            plt.plot(g["time_sec"], g["y_px"], label=name, linewidth=1.2)
-        plt.legend()
-    plt.title("Selected Lip/Jaw Landmark Y Position Over Time")
-    plt.xlabel("Time (sec)")
-    plt.ylabel("y_px")
-    safe_savefig(out_figs / "lip_landmarks_y_over_time.png")
+def run_table_eda(df: pd.DataFrame, stem: str, figures_dir: Path, tables_dir: Path) -> None:
+    write_core_tables(df=df, stem=stem, tables_dir=tables_dir)
+    save_missingness_plot(df=df, title=f"{stem} Missingness", out_path=figures_dir / f"{stem}_missingness_bar.png")
+    save_numeric_histograms(
+        df=df,
+        title=f"{stem} Numeric Histograms",
+        out_path=figures_dir / f"{stem}_numeric_histograms.png",
+    )
+    save_correlation_heatmap(
+        df=df,
+        title=f"{stem} Correlation Heatmap",
+        out_path=figures_dir / f"{stem}_correlation_heatmap.png",
+    )
+
+    if stem == "mouth_timeseries":
+        save_mouth_timeseries_plots(df=df, figures_dir=figures_dir, stem=stem)
+    if stem in {"lip_landmarks", "face_landmarks"}:
+        save_landmark_y_plot(df=df, figures_dir=figures_dir, stem=stem)
+    if stem == "chewing_analysis":
+        save_chewing_plots(df=df, figures_dir=figures_dir)
 
 
-def plot_face_landmarks(df: pd.DataFrame, out_figs: Path) -> None:
-    needed = {"time_sec", "landmark", "x_px", "y_px"}
-    if not needed.issubset(df.columns):
-        return
-    landmark_ids = {13, 14, 61, 291, 152, 93, 323}
-    tmp = df[df["landmark"].isin(landmark_ids)].copy()
-    if tmp.empty:
-        return
+def discover_datasets(data_dir: Path) -> List[DatasetBundle]:
+    datasets: List[DatasetBundle] = []
 
-    plt.figure(figsize=(12, 5))
-    if HAS_SEABORN:
-        sns.lineplot(data=tmp, x="time_sec", y="y_px", hue="landmark", linewidth=1.0)
-    else:
-        for lm, g in tmp.groupby("landmark"):
-            plt.plot(g["time_sec"], g["y_px"], label=str(lm), linewidth=1.0)
-        plt.legend(title="landmark")
-    plt.title("Selected Face Landmark Y Position Over Time")
-    plt.xlabel("Time (sec)")
-    plt.ylabel("y_px")
-    safe_savefig(out_figs / "face_landmarks_y_over_time.png")
+    for subdir in sorted([p for p in data_dir.iterdir() if p.is_dir()]):
+        csv_files = {p.stem: p for p in sorted(subdir.glob("*.csv"))}
+        if csv_files:
+            datasets.append(DatasetBundle(name=subdir.name, csv_files=csv_files))
+
+    top_level = {p.stem.removeprefix("_ALL_"): p for p in sorted(data_dir.glob("_ALL_*.csv"))}
+    if top_level:
+        datasets.append(DatasetBundle(name="_ALL", csv_files=top_level))
+
+    return datasets
 
 
-def run_generic_eda(df: pd.DataFrame, dataset_out: Path, csv_stem: str) -> None:
-    figs = dataset_out / "figures"
-    tables = dataset_out / "tables"
-    write_basic_tables(df, tables, csv_stem)
-    plot_missingness(df, figs, csv_stem)
-    plot_numeric_histograms(df, figs, csv_stem)
-    plot_correlation_heatmap(df, figs, csv_stem)
-
-
-def run_file_specific_plots(name: str, df: pd.DataFrame, dataset_out: Path) -> None:
-    figs = dataset_out / "figures"
-    if name == "mouth_timeseries.csv":
-        plot_mouth_timeseries(df, figs)
-    elif name == "mouth_metrics.csv":
-        plot_mouth_metrics(df, figs)
-    elif name == "chewing_analysis.csv":
-        plot_chewing_analysis(df, figs)
-    elif name == "lip_landmarks.csv":
-        plot_lip_landmarks(df, figs)
-    elif name == "face_landmarks.csv":
-        plot_face_landmarks(df, figs)
-
-
-def cross_dataset_comparison(dataframes_by_dataset: Dict[str, Dict[str, pd.DataFrame]]) -> None:
-    comp_figs = OUT_DIR / "_cross_dataset" / "figures"
-    comp_tabs = OUT_DIR / "_cross_dataset" / "tables"
-    comp_figs.mkdir(parents=True, exist_ok=True)
-    comp_tabs.mkdir(parents=True, exist_ok=True)
+def cross_dataset_outputs(
+    datasets: Iterable[DatasetBundle],
+    out_root: Path,
+) -> None:
+    fig_dir, tab_dir = ensure_dirs(out_root)
 
     chewing_frames = []
     mouth_frames = []
-    for dataset, files in dataframes_by_dataset.items():
-        if "chewing_analysis.csv" in files:
-            d = files["chewing_analysis.csv"].copy()
-            d["dataset"] = dataset
+    for ds in datasets:
+        if ds.name == "_ALL":
+            continue
+        if "chewing_analysis" in ds.csv_files:
+            d = safe_read_csv(ds.csv_files["chewing_analysis"])
+            d["dataset"] = ds.name
             chewing_frames.append(d)
-        if "mouth_timeseries.csv" in files:
-            m = files["mouth_timeseries.csv"][["time_sec", "mouth_open_px"]].copy()
-            m["dataset"] = dataset
-            mouth_frames.append(m)
+        if "mouth_metrics" in ds.csv_files:
+            d = safe_read_csv(ds.csv_files["mouth_metrics"])
+            d["dataset"] = ds.name
+            mouth_frames.append(d)
 
     if chewing_frames:
-        chew_all = pd.concat(chewing_frames, ignore_index=True)
-        chew_all.to_csv(comp_tabs / "chewing_analysis_all_datasets.csv", index=False)
-
-        if {"dataset", "duration_sec"}.issubset(chew_all.columns):
-            plt.figure(figsize=(9, 5))
-            if HAS_SEABORN:
-                sns.violinplot(data=chew_all, x="dataset", y="duration_sec", inner="quartile")
-            else:
-                groups = [g["duration_sec"].dropna() for _, g in chew_all.groupby("dataset")]
-                labels = list(chew_all["dataset"].dropna().unique())
-                plt.boxplot(groups, labels=labels)
+        chewing = pd.concat(chewing_frames, ignore_index=True)
+        chewing.to_csv(tab_dir / "chewing_analysis_all_datasets.csv", index=False)
+        if {"dataset", "duration_sec"}.issubset(chewing.columns):
+            plt.figure(figsize=(10, 5))
+            sns.boxplot(data=chewing.dropna(subset=["duration_sec"]), x="dataset", y="duration_sec")
             plt.title("Chewing Duration by Dataset")
-            plt.xticks(rotation=20, ha="right")
-            safe_savefig(comp_figs / "chewing_duration_by_dataset.png")
+            plt.xlabel("Dataset")
+            plt.ylabel("Duration (sec)")
+            plt.tight_layout()
+            plt.savefig(fig_dir / "chewing_duration_by_dataset.png")
+            plt.close()
 
     if mouth_frames:
-        mouth_all = pd.concat(mouth_frames, ignore_index=True)
-        mouth_all.to_csv(comp_tabs / "mouth_open_all_datasets.csv", index=False)
-
-        plt.figure(figsize=(9, 5))
-        if HAS_SEABORN:
-            sns.kdeplot(data=mouth_all, x="mouth_open_px", hue="dataset", fill=True, common_norm=False)
-        else:
-            for ds, g in mouth_all.groupby("dataset"):
-                plt.hist(g["mouth_open_px"].dropna(), bins=60, alpha=0.35, label=ds, density=True)
-            plt.legend()
-        plt.title("Mouth Opening Distribution by Dataset")
-        plt.xlabel("mouth_open_px")
-        safe_savefig(comp_figs / "mouth_open_distribution_by_dataset.png")
+        mouth = pd.concat(mouth_frames, ignore_index=True)
+        mouth.to_csv(tab_dir / "mouth_open_all_datasets.csv", index=False)
+        if {"dataset", "mouth_open_px"}.issubset(mouth.columns):
+            plot_df = mouth.dropna(subset=["mouth_open_px", "dataset"])
+            if len(plot_df) > 100000:
+                plot_df = plot_df.groupby("dataset", group_keys=False).apply(
+                    lambda x: x.sample(min(len(x), 15000), random_state=42)
+                )
+            plt.figure(figsize=(10, 5))
+            sns.violinplot(data=plot_df, x="dataset", y="mouth_open_px", cut=0, inner="quartile")
+            plt.title("Mouth Open Distribution by Dataset")
+            plt.xlabel("Dataset")
+            plt.ylabel("Mouth Open (px)")
+            plt.tight_layout()
+            plt.savefig(fig_dir / "mouth_open_distribution_by_dataset.png")
+            plt.close()
 
 
 def main() -> None:
-    dataset_dirs = get_dataset_dirs()
-    if not dataset_dirs:
-        print(f"No dataset directories found under: {DATA_DIR}")
-        return
+    project_root = Path(__file__).resolve().parent
+    data_dir = project_root / "data"
+    out_root = project_root / "eda_outputs"
 
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    dataframes_by_dataset: Dict[str, Dict[str, pd.DataFrame]] = {}
+    datasets = discover_datasets(data_dir)
+    if not datasets:
+        raise RuntimeError(f"No datasets found under: {data_dir}")
 
-    for ds_dir in dataset_dirs:
-        dataset_name = ds_dir.name
-        ds_out = OUT_DIR / dataset_name
-        ds_out.mkdir(parents=True, exist_ok=True)
+    run_log: Dict[str, dict] = {"datasets": {}, "project_root": str(project_root)}
 
-        csv_files = sorted(ds_dir.glob("*.csv"))
-        dataframes_by_dataset[dataset_name] = {}
-        run_log = {
-            "dataset": dataset_name,
-            "csv_files": [f.name for f in csv_files],
-            "file_count": len(csv_files),
-        }
+    for ds in datasets:
+        ds_out = out_root / ds.name
+        clean_output_dir(ds_out)
+        figures_dir, tables_dir = ensure_dirs(ds_out)
 
-        for csv_file in csv_files:
-            try:
-                df = pd.read_csv(csv_file)
-            except Exception as exc:
-                print(f"Failed reading {csv_file}: {exc}")
-                continue
+        run_log["datasets"][ds.name] = {"tables": list(ds.csv_files.keys()), "outputs": []}
+        print(f"Running EDA for dataset: {ds.name}")
+        for stem, csv_path in sorted(ds.csv_files.items()):
+            print(f"  - {stem}: {csv_path.name}")
+            df = safe_read_csv(csv_path)
+            run_table_eda(df=df, stem=stem, figures_dir=figures_dir, tables_dir=tables_dir)
+            run_log["datasets"][ds.name]["outputs"].append(stem)
 
-            dataframes_by_dataset[dataset_name][csv_file.name] = df
-            run_generic_eda(df, ds_out, csv_file.stem)
-            run_file_specific_plots(csv_file.name, df, ds_out)
+        (ds_out / "run_log.json").write_text(json.dumps(run_log["datasets"][ds.name], indent=2), encoding="utf-8")
 
-        with open(ds_out / "run_log.json", "w", encoding="utf-8") as f:
-            json.dump(run_log, f, indent=2)
+    cross_out = out_root / "_cross_dataset"
+    clean_output_dir(cross_out)
+    cross_dataset_outputs(datasets=datasets, out_root=cross_out)
 
-    cross_dataset_comparison(dataframes_by_dataset)
-    print(f"EDA complete. Outputs saved to: {OUT_DIR}")
+    (out_root / "run_log.json").write_text(json.dumps(run_log, indent=2), encoding="utf-8")
+    print(f"\nEDA complete. Outputs written to: {out_root}")
 
 
 if __name__ == "__main__":

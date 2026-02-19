@@ -1,0 +1,16 @@
+{
+  "tables": [
+    "chewing_analysis",
+    "face_landmarks",
+    "lip_landmarks",
+    "mouth_metrics",
+    "mouth_timeseries"
+  ],
+  "outputs": [
+    "chewing_analysis",
+    "face_landmarks",
+    "lip_landmarks",
+    "mouth_metrics",
+    "mouth_timeseries"
+  ]
+}
