@@ -1,5 +1,12 @@
 pandas
-matplotlib
-seaborn
 numpy
 scikit-learn
+scipy
+joblib
+pyyaml
+matplotlib
+seaborn
+# Optional baselines / extraction:
+xgboost
+mediapipe
+opencv-python

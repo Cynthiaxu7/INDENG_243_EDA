@@ -104,3 +104,24 @@ The `.gitignore` is configured to ignore:
 - archive files (`*.zip`)
 
 Generated figures in `eda_outputs/` are intentionally **not** ignored so they can be pushed to remote.
+
+## Complete Pipeline (Analytics-First)
+
+If you want a complete and usable end-to-end run **without requiring food_type labels**,
+run the workflow driver:
+
+```bash
+./.venv/bin/python scripts/run_complete_model.py --include-label-progress
+```
+
+What it runs:
+
+- data audit
+- feature extraction
+- direct analytics report
+- feature QC report
+- task readiness report
+- optional label progress report
+
+This mode is intended for the small-data phase where labeling is still in progress.
+Supervised training can be added later once class coverage is sufficient.

@@ -1,0 +1,61 @@
+version: 1
+id_schema:
+  required_columns:
+    - sample_id
+    - video_id
+    - person_id
+  optional_columns:
+    - window_id
+
+tasks:
+  food_type:
+    type: multiclass_ordinal
+    labels: [soft, medium, hard]
+    order: [soft, medium, hard]
+    required: false
+    notes: "Train both standard multiclass models and an ordinal baseline."
+
+  chewing_side_dominance:
+    type: multiclass
+    labels: [left-dominant, right-dominant, balanced]
+    required: false
+
+  rhythm_class:
+    type: binary
+    labels: [steady, irregular]
+    required: false
+
+  pause_style:
+    type: binary
+    labels: [continuous, pause-heavy]
+    required: false
+
+  chew_rate_target:
+    type: regression
+    units: hz_or_chews_per_bite
+    required: false
+
+  eater_speed_class:
+    type: multiclass
+    labels: [slow, normal, fast]
+    required: false
+    notes: "Optional derived target from chew_rate_target thresholds."
+
+evaluation:
+  cv:
+    grouped: true
+    prefer: StratifiedGroupKFold
+    fallback: GroupKFold
+  classification_metrics:
+    - macro_f1
+    - per_class_precision_recall_f1
+    - roc_auc_when_applicable
+  regression_metrics:
+    - mae
+
+severity_score:
+  trained_target: false
+  derivation:
+    from_calibrated_probabilities: true
+    from_normalized_feature_deviations: true
+    suggestion: "severity = 0.6 * uncertainty + 0.4 * deviation"
