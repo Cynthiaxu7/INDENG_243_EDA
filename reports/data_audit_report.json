@@ -1,0 +1,116 @@
+{
+  "data_dir": "data",
+  "top_level_subfolder_count": 20,
+  "top_level_file_count": 5,
+  "sample_count_detected": 20,
+  "sample_ids": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "20"
+  ],
+  "global_file_types": {
+    ".csv": 96
+  },
+  "likely_input_modality": {
+    "tabular_only": 20
+  },
+  "missing_metadata_assumptions": [
+    "person_id is currently unknown and must be supplied manually.",
+    "target labels are not present in raw data; fill metadata template.",
+    "sampling rates may vary by sample; verify fps/time consistency.",
+    "folder names are numeric sample IDs, not guaranteed person IDs."
+  ],
+  "schema_by_file_type": {
+    "chewing_analysis.csv": [
+      "avg_chew_time_sec",
+      "bite_id",
+      "chew_side",
+      "chewing_frequency_per_sec",
+      "duration_sec",
+      "end_frame",
+      "end_time_sec",
+      "mouth_open_frames",
+      "n_chews",
+      "start_frame",
+      "start_time_sec"
+    ],
+    "face_landmarks.csv": [
+      "frame",
+      "landmark",
+      "time_sec",
+      "x_norm",
+      "x_px",
+      "y_norm",
+      "y_px",
+      "z_norm"
+    ],
+    "lip_landmarks.csv": [
+      "frame",
+      "landmark_id",
+      "landmark_name",
+      "time_sec",
+      "x_norm",
+      "x_px",
+      "y_norm",
+      "y_px",
+      "z_norm"
+    ],
+    "mouth_metrics.csv": [
+      "frame",
+      "has_face",
+      "jaw_left_y_px",
+      "jaw_right_y_px",
+      "mouth_open_px",
+      "mouth_width_px",
+      "time_sec"
+    ],
+    "mouth_timeseries.csv": [
+      "bite_id",
+      "frame",
+      "has_face",
+      "jaw_left_y_px",
+      "jaw_right_y_px",
+      "mouth_is_open",
+      "mouth_open_px",
+      "mouth_open_smooth",
+      "mouth_width_px",
+      "phase_open",
+      "time_sec"
+    ]
+  },
+  "missing_expected_files_by_sample": {
+    "2": [
+      "face_landmarks.csv"
+    ],
+    "20": [
+      "face_landmarks.csv"
+    ],
+    "3": [
+      "face_landmarks.csv"
+    ],
+    "6": [
+      "face_landmarks.csv"
+    ]
+  },
+  "notes": [
+    "No raw videos detected in ./data sample folders.",
+    "Face landmark files are missing for some samples; fallback features should work."
+  ]
+}

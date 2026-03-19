@@ -1,0 +1,473 @@
+{
+  "total_samples": 20,
+  "focus": null,
+  "food_type_priority": {
+    "class_counts": {
+      "soft": 0,
+      "medium": 0,
+      "hard": 0
+    },
+    "unlock_target": 4,
+    "recommended_target": 5,
+    "deficit_to_unlock_target_per_class": {
+      "soft": 4,
+      "medium": 4,
+      "hard": 4
+    },
+    "deficit_to_recommended_target_per_class": {
+      "soft": 5,
+      "medium": 5,
+      "hard": 5
+    },
+    "min_additional_labels_to_unlock": 12,
+    "recommendation": "Goal: reach 4 soft, 4 medium, 4 hard first. Preferred: reach 5 per class for a more stable first run."
+  },
+  "tasks": {
+    "food_type": {
+      "task_type": "multiclass",
+      "total_samples": 20,
+      "labeled_samples": 0,
+      "unlabeled_samples": 20,
+      "trainable_now": false,
+      "class_distribution": {
+        "soft": 0,
+        "medium": 0,
+        "hard": 0
+      },
+      "deficit_to_readiness_per_class": {
+        "soft": 4,
+        "medium": 4,
+        "hard": 4
+      },
+      "min_additional_labels_to_unlock": 12,
+      "blocker": "class coverage",
+      "next_action": "label classes: soft+4, medium+4, hard+4"
+    },
+    "chew_side_label": {
+      "task_type": "binary",
+      "total_samples": 20,
+      "labeled_samples": 0,
+      "unlabeled_samples": 20,
+      "trainable_now": false,
+      "class_distribution": {
+        "left": 0,
+        "right": 0
+      },
+      "deficit_to_readiness_per_class": {
+        "left": 5,
+        "right": 5
+      },
+      "min_additional_labels_to_unlock": 10,
+      "blocker": "class coverage",
+      "next_action": "label classes: left+5, right+5"
+    },
+    "rhythm_class": {
+      "task_type": "binary",
+      "total_samples": 20,
+      "labeled_samples": 0,
+      "unlabeled_samples": 20,
+      "trainable_now": false,
+      "class_distribution": {
+        "steady": 0,
+        "irregular": 0
+      },
+      "deficit_to_readiness_per_class": {
+        "steady": 5,
+        "irregular": 5
+      },
+      "min_additional_labels_to_unlock": 10,
+      "blocker": "class coverage",
+      "next_action": "label classes: steady+5, irregular+5"
+    },
+    "pause_style": {
+      "task_type": "binary",
+      "total_samples": 20,
+      "labeled_samples": 0,
+      "unlabeled_samples": 20,
+      "trainable_now": false,
+      "class_distribution": {
+        "continuous": 0,
+        "pause-heavy": 0
+      },
+      "deficit_to_readiness_per_class": {
+        "continuous": 5,
+        "pause-heavy": 5
+      },
+      "min_additional_labels_to_unlock": 10,
+      "blocker": "class coverage",
+      "next_action": "label classes: continuous+5, pause-heavy+5"
+    },
+    "chew_rate_target": {
+      "task_type": "regression",
+      "total_samples": 20,
+      "labeled_samples": 0,
+      "unlabeled_samples": 20,
+      "trainable_now": false,
+      "variance": NaN,
+      "deficit_to_readiness_count": 15,
+      "blocker": "insufficient numeric labels",
+      "next_action": "add at least 15 valid targets with variance"
+    }
+  },
+  "person_id_completeness": {
+    "total_rows": 20,
+    "missing_person_id_rows": 0,
+    "unique_nonempty_person_ids": 20,
+    "can_use_person_grouping_now": true,
+    "warning": "",
+    "interpretation_note": "Person-level grouping is available, but repeated-person information is limited; treat results as preliminary cross-subject pilot findings."
+  },
+  "label_quality_checks": {
+    "label_quality_distribution": {
+      "<missing>": 20
+    },
+    "low_quality_row_count": 0,
+    "missing_quality_row_count": 20,
+    "review_needed_rows_count": 20,
+    "review_needed_rows": [
+      {
+        "sample_id": "1",
+        "video_id": "1",
+        "person_id": "1",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "10",
+        "video_id": "10",
+        "person_id": "10",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "11",
+        "video_id": "11",
+        "person_id": "11",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "12",
+        "video_id": "12",
+        "person_id": "12",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "13",
+        "video_id": "13",
+        "person_id": "13",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "14",
+        "video_id": "14",
+        "person_id": "14",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "15",
+        "video_id": "15",
+        "person_id": "15",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "16",
+        "video_id": "16",
+        "person_id": "16",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "17",
+        "video_id": "17",
+        "person_id": "17",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "18",
+        "video_id": "18",
+        "person_id": "18",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "19",
+        "video_id": "19",
+        "person_id": "19",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "2",
+        "video_id": "2",
+        "person_id": "2",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "20",
+        "video_id": "20",
+        "person_id": "20",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "3",
+        "video_id": "3",
+        "person_id": "3",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "4",
+        "video_id": "4",
+        "person_id": "4",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "5",
+        "video_id": "5",
+        "person_id": "5",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "6",
+        "video_id": "6",
+        "person_id": "6",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "7",
+        "video_id": "7",
+        "person_id": "7",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "8",
+        "video_id": "8",
+        "person_id": "8",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      },
+      {
+        "sample_id": "9",
+        "video_id": "9",
+        "person_id": "9",
+        "food_type": "",
+        "chew_side_label": "",
+        "label_quality": "",
+        "notes": ""
+      }
+    ],
+    "readiness_note": "Label quality coverage is sparse. Fill label_quality during the same sprint: high = confident label, medium = mostly confident, low = ambiguous / poor-quality clip."
+  },
+  "next_best_rows_to_label": [
+    {
+      "sample_id": "1",
+      "video_id": "1",
+      "person_id": "1",
+      "food_type": "",
+      "chew_side_label": "",
+      "label_quality": "",
+      "priority_score": 8.5,
+      "reasons": "missing chew_side_label; missing food_type; missing label_quality"
+    },
+    {
+      "sample_id": "10",
+      "video_id": "10",
+      "person_id": "10",
+      "food_type": "",
+      "chew_side_label": "",
+      "label_quality": "",
+      "priority_score": 8.5,
+      "reasons": "missing chew_side_label; missing food_type; missing label_quality"
+    },
+    {
+      "sample_id": "11",
+      "video_id": "11",
+      "person_id": "11",
+      "food_type": "",
+      "chew_side_label": "",
+      "label_quality": "",
+      "priority_score": 8.5,
+      "reasons": "missing chew_side_label; missing food_type; missing label_quality"
+    },
+    {
+      "sample_id": "12",
+      "video_id": "12",
+      "person_id": "12",
+      "food_type": "",
+      "chew_side_label": "",
+      "label_quality": "",
+      "priority_score": 8.5,
+      "reasons": "missing chew_side_label; missing food_type; missing label_quality"
+    },
+    {
+      "sample_id": "13",
+      "video_id": "13",
+      "person_id": "13",
+      "food_type": "",
+      "chew_side_label": "",
+      "label_quality": "",
+      "priority_score": 8.5,
+      "reasons": "missing chew_side_label; missing food_type; missing label_quality"
+    },
+    {
+      "sample_id": "14",
+      "video_id": "14",
+      "person_id": "14",
+      "food_type": "",
+      "chew_side_label": "",
+      "label_quality": "",
+      "priority_score": 8.5,
+      "reasons": "missing chew_side_label; missing food_type; missing label_quality"
+    },
+    {
+      "sample_id": "15",
+      "video_id": "15",
+      "person_id": "15",
+      "food_type": "",
+      "chew_side_label": "",
+      "label_quality": "",
+      "priority_score": 8.5,
+      "reasons": "missing chew_side_label; missing food_type; missing label_quality"
+    },
+    {
+      "sample_id": "16",
+      "video_id": "16",
+      "person_id": "16",
+      "food_type": "",
+      "chew_side_label": "",
+      "label_quality": "",
+      "priority_score": 8.5,
+      "reasons": "missing chew_side_label; missing food_type; missing label_quality"
+    },
+    {
+      "sample_id": "17",
+      "video_id": "17",
+      "person_id": "17",
+      "food_type": "",
+      "chew_side_label": "",
+      "label_quality": "",
+      "priority_score": 8.5,
+      "reasons": "missing chew_side_label; missing food_type; missing label_quality"
+    },
+    {
+      "sample_id": "18",
+      "video_id": "18",
+      "person_id": "18",
+      "food_type": "",
+      "chew_side_label": "",
+      "label_quality": "",
+      "priority_score": 8.5,
+      "reasons": "missing chew_side_label; missing food_type; missing label_quality"
+    },
+    {
+      "sample_id": "19",
+      "video_id": "19",
+      "person_id": "19",
+      "food_type": "",
+      "chew_side_label": "",
+      "label_quality": "",
+      "priority_score": 8.5,
+      "reasons": "missing chew_side_label; missing food_type; missing label_quality"
+    },
+    {
+      "sample_id": "2",
+      "video_id": "2",
+      "person_id": "2",
+      "food_type": "",
+      "chew_side_label": "",
+      "label_quality": "",
+      "priority_score": 8.5,
+      "reasons": "missing chew_side_label; missing food_type; missing label_quality"
+    }
+  ],
+  "food_type_sprint_queue_rows": [],
+  "previous_task_readiness_snapshot": {
+    "food_type": {
+      "task_type": "multiclass",
+      "n_labeled_samples": 0,
+      "class_distribution": {},
+      "trainable_now": false,
+      "rule": "multiclass requires each class >= 4 samples"
+    },
+    "chew_side_label": {
+      "task_type": "binary",
+      "n_labeled_samples": 0,
+      "class_distribution": {},
+      "trainable_now": false,
+      "rule": "binary requires each class >= 5 samples",
+      "notes": "balanced can remain unlabeled for now"
+    },
+    "rhythm_class": {
+      "task_type": "binary",
+      "n_labeled_samples": 0,
+      "class_distribution": {},
+      "trainable_now": false,
+      "rule": "binary requires each class >= 5 samples"
+    },
+    "pause_style": {
+      "task_type": "binary",
+      "n_labeled_samples": 0,
+      "class_distribution": {},
+      "trainable_now": false,
+      "rule": "binary requires each class >= 5 samples"
+    },
+    "chew_rate_target": {
+      "task_type": "regression",
+      "n_labeled_samples": 0,
+      "variance": NaN,
+      "trainable_now": false,
+      "rule": "regression requires >= 15 labels with non-trivial variance",
+      "notes": "treat as direct analytics unless external ground truth exists"
+    }
+  }
+}
