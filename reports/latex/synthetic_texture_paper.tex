@@ -12,6 +12,8 @@
 \usepackage{cite}
 \usepackage{microtype}
 \usepackage[colorlinks=true, linkcolor=blue, citecolor=blue]{hyperref}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, fit, calc}
 
 \title{Bidirectional Selective State-Space Models for Food-Texture Classification from Chewing-Behavior Video}
 \author{Anonymous}
@@ -47,12 +49,43 @@ The paper is structured as follows. Section 2 reviews selective state-space mode
 
 \begin{figure}[htbp]
 \centering
-\IfFileExists{../figures/fig1_pipeline_overview.png}{%
-  \includegraphics[width=0.9\linewidth]{../figures/fig1_pipeline_overview.png}%
-}{%
-  \framebox[0.9\linewidth]{\rule{0pt}{4em}\emph{(pipeline overview diagram to be added)}}%
-}
-\caption{Overview diagram: per-window feature extraction from face-landmark streams, ordered by \texttt{window\_id} within each video, consumed as a sequence by the bidirectional Mamba-1 classifier; tabular baselines consume the same feature vectors without sequence ordering.}
+\begin{tikzpicture}[
+  font=\small,
+  >=Stealth,
+  node distance=6mm and 7mm,
+  block/.style={draw, rounded corners=1pt, align=center, inner sep=4pt, minimum height=9mm},
+  data/.style ={block, fill=blue!5, minimum width=28mm},
+  model/.style={block, fill=orange!10, minimum width=32mm},
+  outblk/.style={block, fill=green!8, minimum width=75mm},
+  label/.style={font=\footnotesize\itshape, inner sep=1pt},
+  arr/.style  ={->, shorten >=1pt, shorten <=1pt},
+]
+% input row
+\node[data] (vid)  {Chewing videos\\ 20 subjects};
+\node[data, right=of vid] (lm)  {MediaPipe face\\ landmarker};
+\node[data, right=of lm]  (win) {Per-window features\\ 19 dim $\times$ ${\approx}8077$ windows};
+\draw[arr] (vid) -- (lm);
+\draw[arr] (lm)  -- (win);
+
+% split labels
+\node[label, below right=2mm and -14mm of win] (splt) {split on per-window vs.\ per-video};
+
+% two paths
+\node[model, below left=10mm and -6mm of win]  (tab) {Tabular baselines\\ \scriptsize LogReg\,$\cdot$\,RF\,$\cdot$\,XGB\,$\cdot$\,MLP\,$\cdot$\,FT-T\\ \scriptsize each window treated independently};
+\node[model, below right=10mm and -6mm of win] (seq) {Bidirectional Mamba-1 \textbf{(ours)}\\ \scriptsize sort windows by \texttt{window\_id}\\ \scriptsize per video, selective SSM scan};
+
+\draw[arr] (win.south) -- ++(0,-3mm) -| (tab.north);
+\draw[arr] (win.south) -- ++(0,-3mm) -| (seq.north);
+
+% converge to output block
+\node[outblk, below=16mm of win] (outb) {Per-window logits $\to$ \{soft, medium, hard\}\\
+  \scriptsize 5-fold StratifiedGroupKFold on \texttt{video\_id}\quad$\cdot$\quad paired-noise eval $\sigma\!\in\!\{0.1,0.3,0.6\}$\\
+  \scriptsize metrics: per-window macro-F1 $\cdot$ per-chunk majority-vote macro-F1};
+\draw[arr] (tab.south) |- (outb.west);
+\draw[arr] (seq.south) |- (outb.east);
+
+\end{tikzpicture}
+\caption{Overview diagram: per-window feature extraction from face-landmark streams, ordered by \texttt{window\_id} within each video, consumed as a sequence by the bidirectional Mamba-1 classifier; tabular baselines consume the same feature vectors without sequence ordering. Both paths are evaluated under the same 5-fold grouped CV protocol and paired-noise stress regime.}
 \label{fig:pipeline}
 \end{figure}
 
