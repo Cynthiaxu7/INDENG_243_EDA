@@ -1,0 +1,114 @@
+{
+  "cv_strategy": "StratifiedGroupKFold",
+  "n_splits": 5,
+  "group_column": "video_id",
+  "random_state": 42,
+  "n_videos": 20,
+  "n_windows": 8077,
+  "noise_levels": [
+    "low"
+  ],
+  "models": [
+    "mamba",
+    "mamba_ssm_v1"
+  ],
+  "device": "cuda",
+  "tabular_nn_config": {
+    "epochs": 3,
+    "batch_size": 256,
+    "lr": 0.001,
+    "weight_decay": 0.0001
+  },
+  "mamba_config": {
+    "d_model": 32,
+    "n_blocks": 1,
+    "d_state": 8,
+    "epochs": 30,
+    "batch_size": 4,
+    "lr": 0.0005,
+    "weight_decay": 0.001,
+    "upgrades": [
+      "complex_valued_A (Mamba-3)",
+      "trapezoidal_discretization (Mamba-3)",
+      "bidirectional"
+    ],
+    "skipped": [
+      "MIMO_SSM (Mamba-3) \u2014 too small for benefit"
+    ],
+    "variants": [
+      {
+        "name": "mamba",
+        "source": "scripts/models/mamba_hybrid.py (hand-written)",
+        "upgrades": [
+          "complex_valued_A (Mamba-3)",
+          "trapezoidal_discretization (Mamba-3)",
+          "bidirectional"
+        ]
+      },
+      {
+        "name": "mamba_ssm_v1",
+        "source": "mamba_ssm.Mamba (Tri Dao fused CUDA kernel)",
+        "upgrades": [
+          "real_diagonal_A (Mamba-1 reference)",
+          "euler_discretization (Mamba-1 reference)",
+          "bidirectional"
+        ]
+      }
+    ]
+  },
+  "feature_columns_used": [
+    "mouth_open_px_mean",
+    "mouth_open_px_std",
+    "mouth_open_px_p95",
+    "mouth_width_px_mean",
+    "mouth_width_px_std",
+    "mouth_width_px_p95",
+    "jaw_left_y_px_mean",
+    "jaw_left_y_px_std",
+    "jaw_left_y_px_p95",
+    "jaw_right_y_px_mean",
+    "jaw_right_y_px_std",
+    "jaw_right_y_px_p95",
+    "mouth_open_smooth_mean",
+    "mouth_open_smooth_std",
+    "mouth_open_smooth_p95",
+    "jaw_lr_delta_abs_mean",
+    "pause_ratio",
+    "window_duration_sec",
+    "window_frame_count"
+  ],
+  "drop_columns": [
+    "sample_id",
+    "video_id",
+    "person_id",
+    "window_id",
+    "data_path",
+    "chunk_id",
+    "food_type_synthetic",
+    "window_type",
+    "bite_id"
+  ],
+  "imputation": {
+    "strategy": "column_median (global, pre-CV)",
+    "fills_low_noise_csv": {
+      "mouth_open_px_mean": 4.450642187010807,
+      "mouth_open_px_std": 4.23901083377899,
+      "mouth_open_px_p95": 13.463803931194349,
+      "mouth_width_px_mean": 95.7184791457112,
+      "mouth_width_px_std": 6.198691903496746,
+      "mouth_width_px_p95": 106.6170395274304,
+      "jaw_left_y_px_mean": 387.3913450042407,
+      "jaw_left_y_px_std": 8.098760980231894,
+      "jaw_left_y_px_p95": 402.93556702136993,
+      "jaw_right_y_px_mean": 398.385077885219,
+      "jaw_right_y_px_std": 8.393341811652196,
+      "jaw_right_y_px_p95": 419.6392244815826
+    },
+    "note": "inherited from raw extract_features.py NaN on 12 rows, same across noise levels"
+  },
+  "timestamp_utc": "2026-04-17T04:41:47.098247+00:00",
+  "total_seconds": 617.8848254680634,
+  "per_noise_total_seconds": {
+    "low": 617.7398724555969
+  }
+}

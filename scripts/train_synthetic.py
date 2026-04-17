@@ -7,6 +7,8 @@ Models:
   mamba               - hand-written bidirectional Mamba-1 + Mamba-3 upgrades
                         (complex-valued A + trapezoidal discretization)
                         trained on per-video window sequences
+  mamba_ssm_v1        - Tri Dao's fused-kernel Mamba-1 reference baseline
+                        (real-diagonal A + Euler) — same bidirectional wrapper
 
 CV: StratifiedGroupKFold(5) on video_id (fallback to GroupKFold).
 Metrics per (noise_level, model): per-window macro-F1 and per-chunk
@@ -42,8 +44,9 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from models.mamba_hybrid import WindowSequenceClassifier  # noqa: E402
+from models.mamba_ssm_baseline import MambaSSMv1Classifier  # noqa: E402
 
-REPO_ROOT = Path("/Users/prophecia/Desktop/INDENG 243")
+REPO_ROOT = Path(__file__).resolve().parent.parent
 FEATURES_DIR = REPO_ROOT / "artifacts" / "features"
 RESULTS_DIR = REPO_ROOT / "artifacts" / "results"
 
@@ -322,6 +325,7 @@ def run_mamba_fold(
     train_idx: np.ndarray,
     val_idx: np.ndarray,
     fold: int,
+    model_cls: Callable[..., nn.Module] = WindowSequenceClassifier,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, pd.DataFrame]:
     torch.manual_seed(RANDOM_STATE + fold)
 
@@ -341,7 +345,7 @@ def run_mamba_fold(
     cw = compute_class_weight("balanced", classes=np.array(CLASS_ORDER), y=all_train_labels)
     cw_t = torch.tensor(cw, dtype=torch.float32, device=DEVICE)
 
-    clf = WindowSequenceClassifier(
+    clf = model_cls(
         d_features=len(feature_cols),
         d_model=MAMBA_D_MODEL,
         n_blocks=MAMBA_N_BLOCKS,
@@ -586,75 +590,83 @@ def run_noise_level(
 
         print(f"  [{noise}] {model_name} done in {time.time()-t_m:.1f}s  window-F1={mean_row['macro_f1']:.3f}  chunk-F1={mean_row.get('chunk_macro_f1', float('nan')):.3f}")
 
-    if "mamba" not in active_models:
+    mamba_variants: List[Tuple[str, Callable[..., nn.Module]]] = [
+        ("mamba", WindowSequenceClassifier),
+        ("mamba_ssm_v1", MambaSSMv1Classifier),
+    ]
+    active_mamba = [(name, cls) for name, cls in mamba_variants if name in active_models]
+    if not active_mamba:
         elapsed = time.time() - t_start
         return metric_rows, oof_rows, importance_rows, confusion_per_model, cv_name, elapsed
 
-    # -- Mamba sequence model --
-    t_m = time.time()
-    fold_rows = []
-    y_true_full = []
-    y_pred_full = []
-    mamba_oof: List[dict] = []
-    for fold, (tr, te) in enumerate(splitter.split(X, y_enc, groups=groups)):
-        y_true_f, y_pred_f, proba_f, meta_f = run_mamba_fold(df, feature_cols, tr, te, fold)
-        row = {
-            "noise_level": noise,
-            "model": "mamba",
-            "fold": fold,
-            **per_fold_metrics(y_true_f, y_pred_f),
-            "n_train": int(len(tr)),
-            "n_val": int(len(te)),
-            "train_videos": int(groups.iloc[tr].nunique()),
-            "val_videos": int(groups.iloc[te].nunique()),
-        }
-        fold_rows.append(row)
-        metric_rows.append(row)
-        y_true_full.extend(y_true_f.tolist())
-        y_pred_full.extend(y_pred_f.tolist())
-        for j in range(len(meta_f)):
-            mamba_oof.append(
-                {
-                    "noise_level": noise, "model": "mamba", "fold": fold,
-                    "sample_id": meta_f.loc[j, "sample_id"],
-                    "video_id": meta_f.loc[j, "video_id"],
-                    "window_id": meta_f.loc[j, "window_id"],
-                    "chunk_id": meta_f.loc[j, "chunk_id"],
-                    "y_true": y_true_f[j],
-                    "y_pred": y_pred_f[j],
-                    "prob_soft": float(proba_f[j, 0]),
-                    "prob_medium": float(proba_f[j, 1]),
-                    "prob_hard": float(proba_f[j, 2]),
-                }
+    # -- Mamba sequence model(s) --
+    for variant_name, variant_cls in active_mamba:
+        t_m = time.time()
+        fold_rows = []
+        y_true_full = []
+        y_pred_full = []
+        mamba_oof: List[dict] = []
+        for fold, (tr, te) in enumerate(splitter.split(X, y_enc, groups=groups)):
+            y_true_f, y_pred_f, proba_f, meta_f = run_mamba_fold(
+                df, feature_cols, tr, te, fold, model_cls=variant_cls,
             )
-    oof_rows.extend(mamba_oof)
+            row = {
+                "noise_level": noise,
+                "model": variant_name,
+                "fold": fold,
+                **per_fold_metrics(y_true_f, y_pred_f),
+                "n_train": int(len(tr)),
+                "n_val": int(len(te)),
+                "train_videos": int(groups.iloc[tr].nunique()),
+                "val_videos": int(groups.iloc[te].nunique()),
+            }
+            fold_rows.append(row)
+            metric_rows.append(row)
+            y_true_full.extend(y_true_f.tolist())
+            y_pred_full.extend(y_pred_f.tolist())
+            for j in range(len(meta_f)):
+                mamba_oof.append(
+                    {
+                        "noise_level": noise, "model": variant_name, "fold": fold,
+                        "sample_id": meta_f.loc[j, "sample_id"],
+                        "video_id": meta_f.loc[j, "video_id"],
+                        "window_id": meta_f.loc[j, "window_id"],
+                        "chunk_id": meta_f.loc[j, "chunk_id"],
+                        "y_true": y_true_f[j],
+                        "y_pred": y_pred_f[j],
+                        "prob_soft": float(proba_f[j, 0]),
+                        "prob_medium": float(proba_f[j, 1]),
+                        "prob_hard": float(proba_f[j, 2]),
+                    }
+                )
+        oof_rows.extend(mamba_oof)
 
-    chunk_m = chunk_level_metrics(pd.DataFrame(mamba_oof))
-    numeric_cols = [
-        "macro_f1", "weighted_f1",
-        "soft_precision", "soft_recall", "soft_f1", "soft_support",
-        "medium_precision", "medium_recall", "medium_f1", "medium_support",
-        "hard_precision", "hard_recall", "hard_f1", "hard_support",
-        "n_train", "n_val", "train_videos", "val_videos",
-    ]
-    mean_row = {
-        "noise_level": noise, "model": "mamba", "fold": "mean",
-        **aggregate_numeric_mean(fold_rows, numeric_cols),
-        **chunk_m,
-    }
-    metric_rows.append(mean_row)
+        chunk_m = chunk_level_metrics(pd.DataFrame(mamba_oof))
+        numeric_cols = [
+            "macro_f1", "weighted_f1",
+            "soft_precision", "soft_recall", "soft_f1", "soft_support",
+            "medium_precision", "medium_recall", "medium_f1", "medium_support",
+            "hard_precision", "hard_recall", "hard_f1", "hard_support",
+            "n_train", "n_val", "train_videos", "val_videos",
+        ]
+        mean_row = {
+            "noise_level": noise, "model": variant_name, "fold": "mean",
+            **aggregate_numeric_mean(fold_rows, numeric_cols),
+            **chunk_m,
+        }
+        metric_rows.append(mean_row)
 
-    cm = confusion_matrix(y_true_full, y_pred_full, labels=CLASS_ORDER)
-    row_sums = cm.sum(axis=1, keepdims=True)
-    with np.errstate(invalid="ignore", divide="ignore"):
-        cm_norm = np.where(row_sums > 0, cm / np.maximum(row_sums, 1), 0.0)
-    confusion_per_model["mamba"] = {
-        "labels": list(CLASS_ORDER),
-        "matrix": cm.astype(int).tolist(),
-        "normalized": cm_norm.astype(float).tolist(),
-    }
+        cm = confusion_matrix(y_true_full, y_pred_full, labels=CLASS_ORDER)
+        row_sums = cm.sum(axis=1, keepdims=True)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            cm_norm = np.where(row_sums > 0, cm / np.maximum(row_sums, 1), 0.0)
+        confusion_per_model[variant_name] = {
+            "labels": list(CLASS_ORDER),
+            "matrix": cm.astype(int).tolist(),
+            "normalized": cm_norm.astype(float).tolist(),
+        }
 
-    print(f"  [{noise}] mamba done in {time.time()-t_m:.1f}s  window-F1={mean_row['macro_f1']:.3f}  chunk-F1={mean_row.get('chunk_macro_f1', float('nan')):.3f}")
+        print(f"  [{noise}] {variant_name} done in {time.time()-t_m:.1f}s  window-F1={mean_row['macro_f1']:.3f}  chunk-F1={mean_row.get('chunk_macro_f1', float('nan')):.3f}")
 
     elapsed = time.time() - t_start
     return metric_rows, oof_rows, importance_rows, confusion_per_model, cv_name, elapsed
@@ -668,8 +680,8 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Train synthetic-texture classifiers.")
     p.add_argument("--device", choices=["cpu", "cuda"], default="cpu",
                    help="Device for torch models (tabular NNs + Mamba). sklearn/xgb always on CPU.")
-    p.add_argument("--models", type=str, default="logreg,rf,xgb,mlp,ftt,mamba",
-                   help="Comma-separated subset of {logreg,rf,xgb,mlp,ftt,mamba}.")
+    p.add_argument("--models", type=str, default="logreg,rf,xgb,mlp,ftt,mamba,mamba_ssm_v1",
+                   help="Comma-separated subset of {logreg,rf,xgb,mlp,ftt,mamba,mamba_ssm_v1}.")
     p.add_argument("--noise-levels", type=str, default="low,med,high",
                    help="Comma-separated subset of {low,med,high}.")
     p.add_argument("--mamba-epochs", type=int, default=MAMBA_EPOCHS)
@@ -700,7 +712,7 @@ def main() -> None:
     NN_EPOCHS = args.nn_epochs
 
     requested_models = [m.strip() for m in args.models.split(",") if m.strip()]
-    valid_models = {"logreg", "rf", "xgb", "mlp", "ftt", "mamba"}
+    valid_models = {"logreg", "rf", "xgb", "mlp", "ftt", "mamba", "mamba_ssm_v1"}
     bad = [m for m in requested_models if m not in valid_models]
     if bad:
         raise ValueError(f"Unknown models: {bad}. Valid: {sorted(valid_models)}")
@@ -809,6 +821,26 @@ def main() -> None:
             "lr": MAMBA_LR, "weight_decay": MAMBA_WEIGHT_DECAY,
             "upgrades": ["complex_valued_A (Mamba-3)", "trapezoidal_discretization (Mamba-3)", "bidirectional"],
             "skipped": ["MIMO_SSM (Mamba-3) — too small for benefit"],
+            "variants": [
+                {
+                    "name": "mamba",
+                    "source": "scripts/models/mamba_hybrid.py (hand-written)",
+                    "upgrades": [
+                        "complex_valued_A (Mamba-3)",
+                        "trapezoidal_discretization (Mamba-3)",
+                        "bidirectional",
+                    ],
+                },
+                {
+                    "name": "mamba_ssm_v1",
+                    "source": "mamba_ssm.Mamba (Tri Dao fused CUDA kernel)",
+                    "upgrades": [
+                        "real_diagonal_A (Mamba-1 reference)",
+                        "euler_discretization (Mamba-1 reference)",
+                        "bidirectional",
+                    ],
+                },
+            ],
         },
         "feature_columns_used": list(feature_cols_used or []),
         "drop_columns": list(ID_COLS),
