@@ -20,3 +20,10 @@ data/
 
 # Local generated artifacts
 outputs/
+/tmp/
+.mplconfig/
+
+# Other large binary inputs that shouldn't be committed
+*.pdf
+Food Menu.pdf
+face_landmarker.task
