@@ -52,37 +52,44 @@ The paper is structured as follows. Section 2 reviews selective state-space mode
 \begin{tikzpicture}[
   font=\small,
   >=Stealth,
-  node distance=6mm and 7mm,
-  block/.style={draw, rounded corners=1pt, align=center, inner sep=4pt, minimum height=9mm},
-  data/.style ={block, fill=blue!5, minimum width=28mm},
-  model/.style={block, fill=orange!10, minimum width=32mm},
-  outblk/.style={block, fill=green!8, minimum width=75mm},
-  label/.style={font=\footnotesize\itshape, inner sep=1pt},
-  arr/.style  ={->, shorten >=1pt, shorten <=1pt},
+  block/.style ={draw, rounded corners=1pt, align=center, inner sep=5pt},
+  data/.style  ={block, fill=blue!5,    minimum width=30mm, minimum height=12mm},
+  model/.style ={block, fill=orange!10, minimum width=55mm, minimum height=16mm},
+  outblk/.style={block, fill=green!8,   minimum width=140mm, minimum height=15mm},
+  arr/.style   ={->, shorten >=1pt, shorten <=1pt, thick},
 ]
-% input row
-\node[data] (vid)  {Chewing videos\\ 20 subjects};
-\node[data, right=of vid] (lm)  {MediaPipe face\\ landmarker};
-\node[data, right=of lm]  (win) {Per-window features\\ 19 dim $\times$ ${\approx}8077$ windows};
+% --- Row 1: input pipeline (centered around x=0) ---
+\node[data] (lm) at (0,0) {MediaPipe face\\ landmarker};
+\node[data, left=12mm of lm]  (vid) {Chewing videos\\ 20 subjects};
+\node[data, right=12mm of lm] (win) {Per-window features\\ 19 dim $\times$ ${\approx}8077$ windows};
 \draw[arr] (vid) -- (lm);
 \draw[arr] (lm)  -- (win);
 
-% split labels
-\node[label, below right=2mm and -14mm of win] (splt) {split on per-window vs.\ per-video};
+% --- Row 2: two modeling paths, symmetrically placed around x=0 ---
+\node[model] (tab) at (-37mm,-26mm) {%
+  \textbf{Tabular baselines}\\[1pt]
+  \scriptsize LogReg\,$\cdot$\,RF\,$\cdot$\,XGB\,$\cdot$\,MLP\,$\cdot$\,FT-T\\
+  \scriptsize \emph{each window treated independently}%
+};
+\node[model] (seq) at (37mm,-26mm) {%
+  \textbf{Bidirectional Mamba-1 (ours)}\\[1pt]
+  \scriptsize sort windows by \texttt{window\_id} per video\\
+  \scriptsize selective SSM scan%
+};
+% Fork arrows: from win down, split at fork, then down into each model.
+\coordinate (fork) at ($(lm.south)+(0,-7mm)$);
+\draw[arr] (win.south) |- (fork) -| (tab.north);
+\draw[arr] (win.south) |- (fork) -| (seq.north);
+% (also show lm feeds into the split in spirit — visually the lm->win is the canonical path)
 
-% two paths
-\node[model, below left=10mm and -6mm of win]  (tab) {Tabular baselines\\ \scriptsize LogReg\,$\cdot$\,RF\,$\cdot$\,XGB\,$\cdot$\,MLP\,$\cdot$\,FT-T\\ \scriptsize each window treated independently};
-\node[model, below right=10mm and -6mm of win] (seq) {Bidirectional Mamba-1 \textbf{(ours)}\\ \scriptsize sort windows by \texttt{window\_id}\\ \scriptsize per video, selective SSM scan};
-
-\draw[arr] (win.south) -- ++(0,-3mm) -| (tab.north);
-\draw[arr] (win.south) -- ++(0,-3mm) -| (seq.north);
-
-% converge to output block
-\node[outblk, below=16mm of win] (outb) {Per-window logits $\to$ \{soft, medium, hard\}\\
+% --- Row 3: output block, centered under the whole diagram ---
+\node[outblk] (outb) at (0,-48mm) {%
+  \textbf{Per-window logits} $\rightarrow$ \{soft, medium, hard\}\\[1pt]
   \scriptsize 5-fold StratifiedGroupKFold on \texttt{video\_id}\quad$\cdot$\quad paired-noise eval $\sigma\!\in\!\{0.1,0.3,0.6\}$\\
-  \scriptsize metrics: per-window macro-F1 $\cdot$ per-chunk majority-vote macro-F1};
-\draw[arr] (tab.south) |- (outb.west);
-\draw[arr] (seq.south) |- (outb.east);
+  \scriptsize metrics: per-window macro-F1 $\cdot$ per-chunk majority-vote macro-F1%
+};
+\draw[arr] (tab.south) -- (tab.south |- outb.north);
+\draw[arr] (seq.south) -- (seq.south |- outb.north);
 
 \end{tikzpicture}
 \caption{Overview diagram: per-window feature extraction from face-landmark streams, ordered by \texttt{window\_id} within each video, consumed as a sequence by the bidirectional Mamba-1 classifier; tabular baselines consume the same feature vectors without sequence ordering. Both paths are evaluated under the same 5-fold grouped CV protocol and paired-noise stress regime.}
