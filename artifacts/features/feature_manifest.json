@@ -1,0 +1,19 @@
+{
+  "n_samples": 20,
+  "n_features_excluding_ids": 30,
+  "id_schema": [
+    "sample_id",
+    "video_id",
+    "person_id"
+  ],
+  "source_expected_tables": [
+    "mouth_metrics.csv",
+    "mouth_timeseries.csv",
+    "chewing_analysis.csv",
+    "lip_landmarks.csv"
+  ],
+  "notes": [
+    "Inputs appear tabular, so video-landmark extraction is skipped by design.",
+    "All outputs are per-original-video aggregates to preserve small-data assumptions."
+  ]
+}

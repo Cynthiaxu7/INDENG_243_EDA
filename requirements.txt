@@ -1,3 +1,19 @@
 pandas
+numpy
+scikit-learn
+scipy
+joblib
+pyyaml
 matplotlib
 seaborn
+# Tabular GBM baseline (needs `brew install libomp` on macOS):
+xgboost
+# Deep learning for MLP / FT-Transformer / Mamba hybrid.
+# For CUDA, install the matching wheel separately, e.g.:
+#   pip install --index-url https://download.pytorch.org/whl/cu121 torch
+torch
+# FT-Transformer (Gorishniy et al., NeurIPS 2021) implementation by Yandex.
+rtdl-revisiting-models
+# Optional: video feature extraction (not needed for synthetic experiment).
+mediapipe
+opencv-python

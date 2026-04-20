@@ -1,0 +1,47 @@
+{
+  "n_total_samples": 20,
+  "readiness_rules": {
+    "multiclass": "each class >= 4 samples",
+    "binary": "each class >= 5 samples",
+    "regression": ">= 15 labels and non-trivial variance"
+  },
+  "tasks": {
+    "food_type": {
+      "task_type": "multiclass",
+      "n_labeled_samples": 0,
+      "class_distribution": {},
+      "trainable_now": false,
+      "rule": "multiclass requires each class >= 4 samples"
+    },
+    "chew_side_label": {
+      "task_type": "binary",
+      "n_labeled_samples": 0,
+      "class_distribution": {},
+      "trainable_now": false,
+      "rule": "binary requires each class >= 5 samples",
+      "notes": "balanced can remain unlabeled for now"
+    },
+    "rhythm_class": {
+      "task_type": "binary",
+      "n_labeled_samples": 0,
+      "class_distribution": {},
+      "trainable_now": false,
+      "rule": "binary requires each class >= 5 samples"
+    },
+    "pause_style": {
+      "task_type": "binary",
+      "n_labeled_samples": 0,
+      "class_distribution": {},
+      "trainable_now": false,
+      "rule": "binary requires each class >= 5 samples"
+    },
+    "chew_rate_target": {
+      "task_type": "regression",
+      "n_labeled_samples": 0,
+      "variance": NaN,
+      "trainable_now": false,
+      "rule": "regression requires >= 15 labels with non-trivial variance",
+      "notes": "treat as direct analytics unless external ground truth exists"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+hostname : dahlia
+date     : 2026-04-17T00:31:11-04:00
+GPU 0: NVIDIA RTX A6000 (UUID: GPU-effe3cc5-5cc9-93dc-c656-55a6aef96cc7)
+cuda device: NVIDIA RTX A6000
+[cfg] device=cuda  models=['mamba', 'mamba_ssm_v1']  noise_levels=['low']
+[cfg] mamba d_model=32 n_blocks=1 d_state=8 epochs=3
+
+=== Noise level: low ===
+  imputed NaN in 12 cols (inherited from raw extraction)
+  [low] mamba done in 64.8s  window-F1=0.357  chunk-F1=0.412
+  [low] mamba_ssm_v1 done in 1.4s  window-F1=0.283  chunk-F1=0.289
+
+Summary (window-F1 / chunk-F1):
+  [low ] mamba     window=0.357  chunk=0.412
+  [low ] mamba_ssm_v1  window=0.283  chunk=0.289
+
+Wrote metrics:    /home/shuhang/YBJ/mamba_stuff/INDENG_243_EDA/artifacts/results/synthetic_cv_metrics.csv
+Wrote OOF preds:  /home/shuhang/YBJ/mamba_stuff/INDENG_243_EDA/artifacts/results/synthetic_oof_predictions.csv
+Wrote importance: /home/shuhang/YBJ/mamba_stuff/INDENG_243_EDA/artifacts/results/synthetic_feature_importance.csv
+Wrote CM json:    /home/shuhang/YBJ/mamba_stuff/INDENG_243_EDA/artifacts/results/synthetic_confusion_matrices.json
+Wrote run log:    /home/shuhang/YBJ/mamba_stuff/INDENG_243_EDA/artifacts/results/synthetic_run_log.json

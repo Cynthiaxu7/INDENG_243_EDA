@@ -59,6 +59,41 @@ See:
 
 for interpretation notes for each figure.
 
+## Texture Modeling (Module 2)
+
+To move from descriptive EDA to food texture inference, use:
+
+- `texture_model.py`
+- `texture_label_map.json` (maps each `video_id` to a texture class)
+
+Default example map:
+
+- `dessert -> soft`
+- `rameen -> medium`
+- `steak -> hard`
+- others are set to `unknown` until labeled
+
+Run:
+
+```bash
+MPLCONFIGDIR=".mplconfig" python texture_model.py
+```
+
+Outputs are written to:
+
+- `model_outputs/texture_model/`
+
+Key files include:
+
+- `metrics_summary.csv`
+- `label_distribution.csv`
+- `*_classification_report.csv`
+- `*_confusion_matrix_normalized.png`
+- `random_forest_feature_importance.csv`
+
+Note: if each class appears in only one unique video, the script automatically falls back
+to stratified CV and records this in `run_log.json`.
+
 ## Git Notes
 
 The `.gitignore` is configured to ignore:
@@ -69,3 +104,24 @@ The `.gitignore` is configured to ignore:
 - archive files (`*.zip`)
 
 Generated figures in `eda_outputs/` are intentionally **not** ignored so they can be pushed to remote.
+
+## Complete Pipeline (Analytics-First)
+
+If you want a complete and usable end-to-end run **without requiring food_type labels**,
+run the workflow driver:
+
+```bash
+./.venv/bin/python scripts/run_complete_model.py --include-label-progress
+```
+
+What it runs:
+
+- data audit
+- feature extraction
+- direct analytics report
+- feature QC report
+- task readiness report
+- optional label progress report
+
+This mode is intended for the small-data phase where labeling is still in progress.
+Supervised training can be added later once class coverage is sufficient.
